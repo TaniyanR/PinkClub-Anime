@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../public/_bootstrap.php';
 auth_require_admin();
 
-$types = ['genre' => 'ジャンル', 'maker' => 'メーカー', 'series' => 'シリーズ', 'author' => '作者'];
+$types = ['genre' => 'ジャンル', 'maker' => 'メーカー', 'series' => 'シリーズ'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_validate_or_fail(post('_csrf'));
     $type = (string) post('type');

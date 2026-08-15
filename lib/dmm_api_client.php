@@ -36,11 +36,6 @@ class DmmApiClient
         return $this->request('SeriesSearch', $params);
     }
 
-    public function searchAuthors(array $params = []): array
-    {
-        return $this->request('AuthorSearch', $params);
-    }
-
     public function fetchItems(string $site, string $service, string $floor, array $params = []): array
     {
         return $this->request('ItemList', array_merge($params, ['site' => $site, 'service' => $service, 'floor' => $floor]));

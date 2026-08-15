@@ -24,7 +24,7 @@ if ($requestPath !== '' && preg_match('#/admin/index\.php/(.+)$#', $requestPath)
 auth_require_admin();
 
 $title = 'ダッシュボード';
-$tables = ['items', 'genres', 'makers', 'series_master', 'authors', 'dmm_floors'];
+$tables = ['items', 'genres', 'makers', 'series_master', 'dmm_floors'];
 $counts = [];
 foreach ($tables as $t) {
     $counts[$t] = (int) db()->query("SELECT COUNT(*) FROM {$t}")->fetchColumn();
@@ -34,7 +34,6 @@ $labels = [
     'genres' => 'ジャンル',
     'makers' => 'メーカー',
     'series_master' => 'シリーズ',
-    'authors' => '作者',
     'dmm_floors' => 'フロア',
 ];
 $pvStats = [
