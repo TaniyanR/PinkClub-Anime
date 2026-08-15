@@ -294,9 +294,9 @@ require __DIR__ . '/partials/header.php';
 <?php if ($searchQuery === ''): ?>
   <?php pcf_render_empty('検索キーワードを入力してください。'); ?>
 <?php elseif ($searchItems !== []): ?>
-  <section class="pcf-related-grid">
+  <section class="pcf-related-grid pinkclub-fl-related-grid">
     <?php foreach ($searchItems as $item): ?>
-      <?php pcf_render_item_card(is_array($item) ? $item : []); ?>
+      <?php pcf_render_item_card(is_array($item) ? $item : [], 180, true); ?>
     <?php endforeach; ?>
   </section>
   <nav class="pcf-pagination" aria-label="ページネーション">
