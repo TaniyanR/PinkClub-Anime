@@ -155,7 +155,7 @@ require __DIR__ . '/includes/header.php';
 ?>
 <section class="card">
   <h1><?= e($pageTitle) ?></h1>
-  <p>このページで保存した APIID / アフィリエイトID は、商品・ジャンル・女優・シリーズの同期で共通利用されます。</p>
+  <p>このページで保存した APIID / アフィリエイトID は、商品と関連情報の同期で共通利用されます。</p>
 
   <?php if ($message !== ''): ?>
     <div class="admin-notice <?= $messageType === 'success' ? 'admin-notice--success' : 'admin-notice--error' ?>">

@@ -11,12 +11,11 @@ $searchQuery = trim((string)($_GET['q'] ?? ''));
 
 $navItems = [
     ['href' => public_url(''), 'label' => 'TOP'],
-    ['href' => public_url('items.php'), 'label' => '商品一覧'],
-    ['href' => public_url('actresses.php'), 'label' => '女優一覧'],
     ['href' => public_url('genres.php'), 'label' => 'ジャンル一覧'],
     ['href' => public_url('makers.php'), 'label' => 'メーカー一覧'],
     ['href' => public_url('labels.php'), 'label' => 'レーベル一覧'],
     ['href' => public_url('series_list.php'), 'label' => 'シリーズ一覧'],
+    ['href' => public_url('authors.php'), 'label' => '作者一覧'],
 ];
 $mobileMainItems = $navItems;
 $mobileInfoItems = [
@@ -25,11 +24,9 @@ $mobileInfoItems = [
     ['href' => public_url('page.php?slug=que'), 'label' => 'お問い合わせ'],
 ];
 $sitePostCount = null;
-$siteActressCount = null;
 
 $publicCounts = pcf_public_counts();
 $sitePostCount = $publicCounts['posts'];
-$siteActressCount = $publicCounts['actresses'];
 
 try {
     $stmt = db()->query('SELECT slug,title FROM fixed_pages WHERE is_published = 1 ORDER BY id ASC');
@@ -60,7 +57,6 @@ try {
         </div>
         <div class="site-mobile-menu__group">
             <?php if ($sitePostCount !== null): ?><a style="color:#000;">投稿数：<strong><?= e(number_format($sitePostCount)) ?></strong></a><?php endif; ?>
-            <?php if ($siteActressCount !== null): ?><a style="color:#000;">女優数：<strong><?= e(number_format($siteActressCount)) ?></strong></a><?php endif; ?>
             <?php foreach ($mobileInfoItems as $item) : ?>
                 <a href="<?= e($item['href']) ?>"><?= e($item['label']) ?></a>
             <?php endforeach; ?>
