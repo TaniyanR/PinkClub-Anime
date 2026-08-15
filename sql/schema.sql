@@ -76,8 +76,6 @@ CREATE TABLE IF NOT EXISTS makers LIKE actresses;
 ALTER TABLE makers MODIFY dmm_id VARCHAR(64) NOT NULL UNIQUE;
 CREATE TABLE IF NOT EXISTS series_master LIKE actresses;
 ALTER TABLE series_master MODIFY dmm_id VARCHAR(64) NOT NULL UNIQUE;
-CREATE TABLE IF NOT EXISTS authors LIKE actresses;
-ALTER TABLE authors MODIFY dmm_id VARCHAR(64) NOT NULL UNIQUE;
 
 CREATE TABLE IF NOT EXISTS items (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -182,16 +180,6 @@ CREATE TABLE IF NOT EXISTS item_series (
   UNIQUE KEY uk_item_series (item_id, dmm_id),
   INDEX idx_item_series_dmm_item (dmm_id, item_id),
   CONSTRAINT fk_item_series_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS item_authors (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  item_id INT UNSIGNED NOT NULL,
-  dmm_id VARCHAR(64) NULL,
-  author_name VARCHAR(255) NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_item_author (item_id, dmm_id),
-  CONSTRAINT fk_item_author_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS item_actors (

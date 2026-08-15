@@ -46,9 +46,9 @@ function backfill_master_from_relation(string $masterTable, string $relationTabl
 {
     static $backfilled = [];
 
-    $masterTable  = normalize_table($masterTable,  ['actresses', 'genres', 'makers', 'series_master', 'authors']);
-    $relationTable = normalize_table($relationTable, ['item_actresses', 'item_genres', 'item_makers', 'item_series', 'item_authors']);
-    $nameColumn   = normalize_order($nameColumn, ['actress_name', 'genre_name', 'maker_name', 'series_name', 'author_name'], $nameColumn);
+    $masterTable  = normalize_table($masterTable,  ['actresses', 'genres', 'makers', 'series_master']);
+    $relationTable = normalize_table($relationTable, ['item_actresses', 'item_genres', 'item_makers', 'item_series']);
+    $nameColumn   = normalize_order($nameColumn, ['actress_name', 'genre_name', 'maker_name', 'series_name'], $nameColumn);
     $cacheKey = $masterTable . ':' . $relationTable . ':' . $nameColumn;
     if (isset($backfilled[$cacheKey])) {
         return;
