@@ -288,7 +288,7 @@ if ($canonicalItemId > 0 && ($id !== $canonicalItemId || $contentId !== '' || $c
 }
 
 $relatedItems = [];
-$actresses = [];
+$actors = [];
 $genres = [];
 $makers = [];
 $seriesList = [];
@@ -302,11 +302,6 @@ try {
     $relatedItems = fetch_related_items((string)$item['content_id'], 12);
 } catch (Throwable) {
     $relatedItems = [];
-}
-try {
-    $actresses = fetch_item_actresses((string)$item['content_id']);
-} catch (Throwable) {
-    $actresses = [];
 }
 try {
     $genres = fetch_item_genres((string)$item['content_id']);
@@ -345,17 +340,37 @@ if (db_table_exists('item_authors')) {
     }
 }
 
+if (db_table_exists('item_actors')) {
+    try {
+        $actorSql = db_column_exists('item_actors', 'item_id')
+            ? 'SELECT DISTINCT ia.actor_name AS name
+             FROM item_actors ia
+             INNER JOIN items i ON i.id = ia.item_id
+             WHERE i.content_id = ?
+             ORDER BY ia.actor_name'
+            : 'SELECT DISTINCT actor_name AS name
+             FROM item_actors
+             WHERE content_id = ?
+             ORDER BY actor_name';
+        $actorStmt = db()->prepare($actorSql);
+        $actorStmt->execute([(string)$item['content_id']]);
+        $actors = $actorStmt->fetchAll() ?: [];
+    } catch (Throwable) {
+        $actors = [];
+    }
+}
+
 $relatedItems = dedupe_items_by_key($relatedItems);
 if ($isMobileViewport) {
     $relatedItems = array_slice($relatedItems, 0, 10);
 }
-$actresses = item_unique_rows($actresses, ['id', 'name']);
+$actors = item_unique_rows($actors, ['name']);
 $genres = item_unique_rows($genres, ['id', 'name']);
 $makers = item_unique_rows($makers, ['id', 'name']);
 $seriesList = item_unique_rows($seriesList, ['id', 'name']);
 $authors = item_unique_rows($authors, ['id', 'name']);
 
-$actresses = array_values(array_filter($actresses, static function ($row): bool {
+$actors = array_values(array_filter($actors, static function ($row): bool {
     return is_array($row) && !pcf_is_noise_name((string)($row['name'] ?? ''));
 }));
 $genres = array_values(array_filter($genres, static function ($row): bool {
@@ -508,17 +523,13 @@ $rawDirectorName = item_pick_raw_text((array)($raw['iteminfo'] ?? []), ['directo
 $deviceText = item_pick_raw_text($raw, ['supportedDevices', 'device', 'devices']);
 $deliveryStartText = item_pick_raw_text($raw, ['date', 'deliveryStartDate', 'delivery_start_date']);
 $labelName = item_pick_raw_text((array)($raw['iteminfo'] ?? []), ['label']);
-$performerText = implode('、', array_values(array_filter(array_map(static fn($v) => trim((string)($v['name'] ?? '')), $actresses), static fn($v) => $v !== '')));
-$genreText = implode('、', array_values(array_filter(array_map(static fn($v) => trim((string)($v['name'] ?? '')), $genres), static fn($v) => $v !== '')));
-$performerLinks = [];
-foreach ($actresses as $actressRow) {
-    $actressId = (int)($actressRow['id'] ?? 0);
-    $actressName = trim((string)($actressRow['name'] ?? ''));
-    if ($actressId <= 0 || $actressName === '') {
-        continue;
-    }
-    $performerLinks[] = '<a href="' . e(public_url('actress.php') . '?id=' . rawurlencode((string)$actressId)) . '">' . e($actressName) . '</a>';
+$actorNames = array_values(array_filter(array_map(static fn($v) => trim((string)($v['name'] ?? '')), $actors), static fn($v) => $v !== ''));
+if ($actorNames === []) {
+    item_collect_named_values($raw['iteminfo']['actor'] ?? [], $actorNames);
+    $actorNames = array_values(array_unique(array_filter(array_map(static fn($v) => trim((string)$v), $actorNames), static fn($v) => $v !== '')));
 }
+$performerText = implode('、', $actorNames);
+$genreText = implode('、', array_values(array_filter(array_map(static fn($v) => trim((string)($v['name'] ?? '')), $genres), static fn($v) => $v !== '')));
 $genreLinks = [];
 foreach ($genres as $genreRow) {
     $genreId = (int)($genreRow['id'] ?? 0);
@@ -613,9 +624,8 @@ if (str_starts_with($packageImage, 'data:image/svg+xml') || pcf_is_self_hosted_f
     $packageImage = '';
 }
 
-$actressNames = array_values(array_filter(array_map(static fn($row) => trim((string)($row['name'] ?? '')), $actresses), static fn($name) => $name !== ''));
 $genreNames = array_values(array_filter(array_map(static fn($row) => trim((string)($row['name'] ?? '')), $genres), static fn($name) => $name !== ''));
-$pageDescriptionSource = $desc !== '' ? $desc : $title . 'のFANZA通販ページ。' . ($actressNames !== [] ? implode('、', array_slice($actressNames, 0, 3)) . '出演、' : '') . ($genreNames !== [] ? implode('、', array_slice($genreNames, 0, 3)) . '作品です。' : '作品です。');
+$pageDescriptionSource = $desc !== '' ? $desc : $title . 'のFANZAアニメ作品ページ。' . ($genreNames !== [] ? implode('、', array_slice($genreNames, 0, 3)) . '作品です。' : '作品です。');
 $pageDescription = mb_strimwidth($pageDescriptionSource, 0, 150, '…', 'UTF-8');
 $canonicalUrl = public_url('item.php') . '?id=' . rawurlencode((string)(int)$item['id']);
 $ogImage = $packageImage;
@@ -638,8 +648,8 @@ $productJsonLd = [
 if ($ogImage !== '') {
     $productJsonLd['image'] = $ogImage;
 }
-if ($actressNames !== []) {
-    $productJsonLd['actor'] = array_map(static fn($name) => ['@type' => 'Person', 'name' => $name], $actressNames);
+if ($actorNames !== []) {
+    $productJsonLd['actor'] = array_map(static fn($name) => ['@type' => 'Person', 'name' => $name], $actorNames);
 }
 $jsonLd = (string)json_encode($productJsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
 
@@ -659,7 +669,6 @@ require __DIR__ . '/partials/header.php';
 ?>
 <?php pcf_render_breadcrumbs([
     ['label' => 'トップ', 'url' => public_url('index.php')],
-    ['label' => '商品一覧', 'url' => public_url('items.php')],
     ['label' => $breadcrumbTitle],
 ]); ?>
 
@@ -708,14 +717,14 @@ require __DIR__ . '/partials/header.php';
           <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">配信開始日</th><td style="padding:4px 0; border:0;"><?= e($deliveryStartDisplay !== '' ? $deliveryStartDisplay : '―') ?></td></tr>
           <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">商品発売日</th><td style="padding:4px 0; border:0;"><?= e($releaseDateDisplay !== '' ? $releaseDateDisplay : '―') ?></td></tr>
           <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">収録時間</th><td style="padding:4px 0; border:0;"><?= e($volumeDisplay !== '' ? $volumeDisplay : '―') ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">出演者</th><td style="padding:4px 0; border:0;"><?= $performerLinks !== [] ? implode('、', $performerLinks) : e($performerText !== '' ? $performerText : '―') ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">監督</th><td style="padding:4px 0; border:0;"><?= $rawDirectorName !== '' ? '<a href="' . e(public_url('search.php') . '?' . http_build_query(['q' => $rawDirectorName])) . '">' . e($rawDirectorName) . '</a>' : '―' ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">作者</th><td style="padding:4px 0; border:0;"><?= $authorLinks !== [] ? implode('、', $authorLinks) : '―' ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">シリーズ</th><td style="padding:4px 0; border:0;"><?= $seriesLinks !== [] ? implode('、', $seriesLinks) : e($rawSeriesName !== '' ? $rawSeriesName : '―') ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">メーカー</th><td style="padding:4px 0; border:0;"><?= $makerLinks !== [] ? implode('、', $makerLinks) : e($rawMakerName !== '' ? $rawMakerName : '―') ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">レーベル</th><td style="padding:4px 0; border:0;"><?= $labelName !== '' ? '<a href="' . e(public_url('label.php') . '?' . http_build_query(['name' => $labelName])) . '">' . e($labelName) . '</a>' : '―' ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">ジャンル</th><td style="padding:4px 0; border:0;"><?= $genreLinks !== [] ? implode('、', $genreLinks) : e($genreText !== '' ? $genreText : '―') ?></td></tr>
-          <tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">関連タグ</th><td style="padding:4px 0; border:0;"><?= $tagLinks !== [] ? implode(' ', $tagLinks) : e($tagText !== '' ? $tagText : '―') ?></td></tr>
+          <?php if ($performerText !== ''): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">出演者</th><td style="padding:4px 0; border:0;"><?= e($performerText) ?></td></tr><?php endif; ?>
+          <?php if ($rawDirectorName !== ''): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">監督</th><td style="padding:4px 0; border:0;"><a href="<?= e(public_url('search.php') . '?' . http_build_query(['q' => $rawDirectorName])) ?>"><?= e($rawDirectorName) ?></a></td></tr><?php endif; ?>
+          <?php if ($authorLinks !== []): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">作者</th><td style="padding:4px 0; border:0;"><?= implode('、', $authorLinks) ?></td></tr><?php endif; ?>
+          <?php if ($seriesLinks !== [] || $rawSeriesName !== ''): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">シリーズ</th><td style="padding:4px 0; border:0;"><?= $seriesLinks !== [] ? implode('、', $seriesLinks) : e($rawSeriesName) ?></td></tr><?php endif; ?>
+          <?php if ($makerLinks !== [] || $rawMakerName !== ''): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">メーカー</th><td style="padding:4px 0; border:0;"><?= $makerLinks !== [] ? implode('、', $makerLinks) : e($rawMakerName) ?></td></tr><?php endif; ?>
+          <?php if ($labelName !== ''): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">レーベル</th><td style="padding:4px 0; border:0;"><a href="<?= e(public_url('label.php') . '?' . http_build_query(['name' => $labelName])) ?>"><?= e($labelName) ?></a></td></tr><?php endif; ?>
+          <?php if ($genreLinks !== [] || $genreText !== ''): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">ジャンル</th><td style="padding:4px 0; border:0;"><?= $genreLinks !== [] ? implode('、', $genreLinks) : e($genreText) ?></td></tr><?php endif; ?>
+          <?php if ($tagLinks !== [] || $tagText !== ''): ?><tr><th style="text-align:left; font-weight:700; padding:4px 8px 4px 0; white-space:nowrap; border:0;">関連タグ</th><td style="padding:4px 0; border:0;"><?= $tagLinks !== [] ? implode(' ', $tagLinks) : e($tagText) ?></td></tr><?php endif; ?>
         </tbody>
       </table>
     </div>

@@ -11,7 +11,7 @@ function scheduler_tick(): array
     scheduler_seed_default_schedules($pdo);
     scheduler_apply_auto_settings($pdo);
 
-    $stmt = $pdo->query("SELECT * FROM api_schedules WHERE is_enabled = 1 AND schedule_type IN ('items','actresses') ORDER BY COALESCE(last_run_at, '1970-01-01 00:00:00') ASC, FIELD(schedule_type, 'items','actresses')");
+    $stmt = $pdo->query("SELECT * FROM api_schedules WHERE is_enabled = 1 AND schedule_type = 'items' ORDER BY COALESCE(last_run_at, '1970-01-01 00:00:00') ASC");
     $schedules = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
     $jobs = [];
     foreach ($schedules as $schedule) {
@@ -30,7 +30,7 @@ function scheduler_tick(): array
         try {
             $result = scheduler_run_schedule($schedule);
             $jobStatus = scheduler_schedule_result_status($result);
-            // Record every acquired execution attempt so one unhealthy job cannot starve the other.
+            // Record every acquired execution attempt.
             $pdo->prepare('UPDATE api_schedules SET last_run_at = NOW(), lock_until = NULL WHERE id = ?')->execute([$schedule['id']]);
             $jobs[] = array_merge(['schedule_type' => $scheduleType, 'status' => $jobStatus], $result);
             break;
@@ -82,7 +82,6 @@ function scheduler_jobs_message(array $jobs): string
         $type = (string)($job['schedule_type'] ?? '');
         $label = match ($type) {
             'items' => '商品',
-            'actresses' => '女優',
             default => $type,
         };
         $message = (string)($job['message'] ?? '');
@@ -98,9 +97,6 @@ function scheduler_run_schedule(array $schedule): array
 
     return match ($type) {
         'items' => scheduler_run_items_schedule(dmm_sync_service('items'), $settings),
-        'genres' => scheduler_run_master_schedule('genres', dmm_sync_service('genres'), $settings),
-        'actresses' => scheduler_run_master_schedule('actresses', dmm_sync_service('actresses'), $settings),
-        'series' => scheduler_run_master_schedule('series', dmm_sync_service('series'), $settings),
         default => ['synced_count' => 0, 'message' => '未対応スケジュールです'],
     };
 }
@@ -294,9 +290,9 @@ function scheduler_apply_auto_settings(PDO $pdo): void
 {
     $enabled = settings_bool('item_sync_enabled', false) ? 1 : 0;
     $interval = max(1, settings_int('item_sync_interval_minutes', 60));
-    $pdo->prepare("UPDATE api_schedules SET interval_minutes = :interval, is_enabled = :enabled, updated_at = NOW() WHERE schedule_type IN ('items','actresses')")
+    $pdo->prepare("UPDATE api_schedules SET interval_minutes = :interval, is_enabled = :enabled, updated_at = NOW() WHERE schedule_type = 'items'")
         ->execute([':interval' => $interval, ':enabled' => $enabled]);
-    $pdo->prepare("UPDATE api_schedules SET is_enabled = 0, updated_at = NOW() WHERE schedule_type IN ('genres','series')")
+    $pdo->prepare("UPDATE api_schedules SET is_enabled = 0, updated_at = NOW() WHERE schedule_type IN ('actresses','genres','series')")
         ->execute();
 }
 
@@ -340,7 +336,7 @@ function scheduler_ensure_columns(PDO $pdo, string $table, array $alterSqlByColu
 
 function scheduler_job_keys(): array
 {
-    return ['items', 'actresses'];
+    return ['items'];
 }
 
 function scheduler_seed_default_schedules(PDO $pdo): void

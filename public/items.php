@@ -297,16 +297,6 @@ function item_sample_state(array $item): array
         }
     }
 
-    if (!$hasImageSample) {
-        foreach (parse_index_image_urls((string)($item['image_list'] ?? '')) as $image) {
-            $sampleImageCandidate = trim((string)$image);
-            if ($sampleImageCandidate !== '' && !index_is_self_hosted_fanza_image_url($sampleImageCandidate)) {
-                $hasImageSample = true;
-                break;
-            }
-        }
-    }
-
     return ['movie_url' => $firstMovieUrl, 'movie_urls' => $movieUrls, 'has_images' => $hasImageSample];
 }
 

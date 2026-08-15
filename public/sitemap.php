@@ -52,8 +52,8 @@ function sitemap_sources(): array
     $masterSources = [
         'genres' => ['relation' => 'item_genres', 'path' => 'genre.php'],
         'series_master' => ['relation' => 'item_series', 'path' => 'series_detail.php'],
-        'actresses' => ['relation' => 'item_actresses', 'path' => 'actress.php'],
         'makers' => ['relation' => 'item_makers', 'path' => 'maker.php'],
+        'authors' => ['relation' => 'item_authors', 'path' => 'author.php'],
     ];
 
     foreach ($masterSources as $table => $config) {
@@ -70,9 +70,6 @@ function sitemap_sources(): array
             "entity.name NOT LIKE '%/%'",
         ];
 
-        if ($table === 'actresses') {
-            $where[] = "entity.dmm_id REGEXP '^[0-9]+$'";
-        }
         if ($table === 'series_master') {
             $redirectSeriesIds = array_keys(series_canonical_maker_redirects());
             if ($redirectSeriesIds !== []) {
@@ -94,8 +91,8 @@ function sitemap_sources(): array
             $legacyIdColumn = match ($table) {
                 'genres' => 'genre_id',
                 'series_master' => 'series_id',
-                'actresses' => 'actress_id',
                 'makers' => 'maker_id',
+                'authors' => 'author_id',
             };
             $where[] = 'EXISTS ('
                 . 'SELECT 1 FROM ' . $relation . ' relation_row '
@@ -171,7 +168,11 @@ function sitemap_emit_source(array $source, int $start, int &$remaining): int
 $perSitemap = 10000;
 $staticUrls = [
     [public_url('index.php'), 'daily', '1.0'],
-    [public_url('items.php'), 'daily', '0.9'],
+    [public_url('genres.php'), 'weekly', '0.8'],
+    [public_url('makers.php'), 'weekly', '0.8'],
+    [public_url('labels.php'), 'weekly', '0.8'],
+    [public_url('series_list.php'), 'weekly', '0.8'],
+    [public_url('authors.php'), 'weekly', '0.8'],
 ];
 $sources = sitemap_sources();
 $totalUrls = count($staticUrls);

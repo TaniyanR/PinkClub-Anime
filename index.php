@@ -139,18 +139,6 @@ function normalize_index_image_url(string $url): string
     return '';
 }
 
-function actress_index_image(array $actress): string
-{
-    foreach (['image_small', 'image_large', 'image_url'] as $key) {
-        $candidate = normalize_index_image_url((string)($actress[$key] ?? ''));
-        if ($candidate !== '') {
-            return $candidate;
-        }
-    }
-
-    return '';
-}
-
 function parse_index_image_urls(?string $value): array
 {
     if ($value === null || trim($value) === '') {
@@ -310,15 +298,6 @@ function item_sample_state(array $item): array
         }
     }
 
-    if (!$hasImageSample) {
-        foreach (parse_index_image_urls((string)($item['image_list'] ?? '')) as $image) {
-            if (trim((string)$image) !== '') {
-                $hasImageSample = true;
-                break;
-            }
-        }
-    }
-
     return ['movie_url' => $firstMovieUrl, 'movie_urls' => $movieUrls, 'has_images' => $hasImageSample];
 }
 
@@ -412,7 +391,6 @@ $itemCount = 0;
 
 $newReleaseTop = $newReleaseBottom = $latestTop = $latestBottom = $pickupTop = $pickupBottom = [];
 $fallbackItems = [];
-$actresses = [];
 $genreRows = [];
 $seriesSection = ['id' => 0, 'name' => '', 'items' => []];
 $makerSection = ['id' => 0, 'name' => '', 'items' => []];
@@ -461,14 +439,6 @@ try {
         }
         $pickupTop = array_slice($popularRows, 0, 5);
         $pickupBottom = array_slice($popularRows, 5, 15);
-
-        if (db_table_exists($pdo, 'actresses')) {
-            $actresses = pcf_home_rotation_current_set($homeRotationCache, 'actresses');
-            if ($actresses === []) {
-                $actressCandidates = $pdo->query('SELECT id,name,image_small,image_large,image_url FROM actresses ORDER BY updated_at DESC,id DESC LIMIT 30')->fetchAll();
-                $actresses = array_slice($actressCandidates ?: [], 0, 15);
-            }
-        }
 
         if (db_table_exists($pdo, 'genres') && db_table_exists($pdo, 'item_genres')) {
             $genreCandidates = pcf_home_rotation_current_set($homeRotationCache, 'genres');
@@ -614,7 +584,6 @@ $hasHomeContent = $newReleaseTop !== []
     || $latestBottom !== []
     || $pickupTop !== []
     || $pickupBottom !== []
-    || $actresses !== []
     || $genreRows !== []
     || $seriesSection['items'] !== []
     || $makerSection['items'] !== []
@@ -626,8 +595,7 @@ $hasHomeContent = $newReleaseTop !== []
 <?php elseif (!$hasHomeContent): ?>
   <div class="card">
     <h2>表示できる本文データがまだありません</h2>
-    <p>商品データは存在しますが、トップページに表示するセクションを組み立てられませんでした。下の作品一覧から確認してください。</p>
-    <p><a class="button button--primary" href="<?= e(public_url('items.php')) ?>">商品一覧を見る</a></p>
+    <p>商品データは存在しますが、トップページに表示するセクションを組み立てられませんでした。</p>
   </div>
   <?php if ($fallbackItems !== []): ?>
     <section class="rail-section">
@@ -664,19 +632,6 @@ $hasHomeContent = $newReleaseTop !== []
   <section class="rail-section only-sp">
     <h2>ピックアップ</h2>
     <div class="rail-row rail-row--210 rail-row--no-scroll rail-row--top-shift"><?php foreach ($pickupTop as $item) { render_item_card($item, 210, null, true, false); } ?></div>
-  </section>
-
-  <section class="rail-section">
-    <h2>女優</h2>
-    <div class="rail-row rail-row--180 rail-row--home-actresses">
-      <?php foreach ($actresses as $actress): ?>
-        <?php $actressImage = actress_index_image(is_array($actress) ? $actress : []); ?>
-        <article class="card rail-card rail-card--180">
-          <?php if ($actressImage !== ''): ?><img class="thumb" src="<?= e($actressImage) ?>" alt="<?= e((string)$actress['name']) ?>"><?php else: ?><div class="rail-card__noimage" style="width:180px;height:180px;">画像なし</div><?php endif; ?>
-          <a class="rail-card__title" href="<?= e(app_url('public/actress.php?id=' . (int)$actress['id'])) ?>"><?= e((string)$actress['name']) ?></a>
-        </article>
-      <?php endforeach; ?>
-    </div>
   </section>
 
   <section class="rail-section home-genre-section">

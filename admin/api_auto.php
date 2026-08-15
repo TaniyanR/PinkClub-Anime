@@ -6,7 +6,6 @@ require_once __DIR__ . '/../public/_bootstrap.php';
 require_once __DIR__ . '/../lib/app.php';
 require_once __DIR__ . '/../lib/scheduler.php';
 require_once __DIR__ . '/../lib/repository.php';
-require_once __DIR__ . '/../lib/public_counts.php';
 
 auth_require_admin();
 
@@ -76,7 +75,7 @@ $pdo = db();
 scheduler_ensure_schedule_table($pdo);
 scheduler_seed_default_schedules($pdo);
 scheduler_apply_auto_settings($pdo);
-$stateStmt = $pdo->query("SELECT job_key, last_run_at, last_success, last_message, next_offset, lock_until FROM sync_job_state WHERE job_key IN ('items','actresses') ORDER BY FIELD(job_key, 'items','actresses')");
+$stateStmt = $pdo->query("SELECT job_key, last_run_at, last_success, last_message, next_offset, lock_until FROM sync_job_state WHERE job_key = 'items'");
 $autoStates = $stateStmt ? $stateStmt->fetchAll(PDO::FETCH_ASSOC) : [];
 
 $storedItemCount = null;
@@ -99,29 +98,6 @@ try {
     $storedItemCount = null;
     $publicItemCount = null;
     $nonPublicItemCount = null;
-}
-
-$storedActressCount = null;
-$publicActressCount = null;
-$nonPublicActressCount = null;
-try {
-    if (db_table_exists('actresses')) {
-        $storedActressStmt = $pdo->query('SELECT COUNT(*) FROM actresses');
-        $storedActressCount = $storedActressStmt ? (int)$storedActressStmt->fetchColumn() : null;
-
-        $publicCounts = pcf_public_counts();
-        $publicActressCount = isset($publicCounts['actresses']) && $publicCounts['actresses'] !== null
-            ? (int)$publicCounts['actresses']
-            : null;
-
-        if ($storedActressCount !== null && $publicActressCount !== null) {
-            $nonPublicActressCount = max(0, $storedActressCount - $publicActressCount);
-        }
-    }
-} catch (Throwable) {
-    $storedActressCount = null;
-    $publicActressCount = null;
-    $nonPublicActressCount = null;
 }
 
 require __DIR__ . '/includes/header.php';
@@ -199,24 +175,12 @@ require __DIR__ . '/includes/header.php';
     <p class="admin-form-note">商品数の内訳を取得できませんでした。</p>
   <?php endif; ?>
 
-  <h2 style="margin-top:24px;">女優数の内訳</h2>
-  <?php if ($storedActressCount !== null && $publicActressCount !== null && $nonPublicActressCount !== null): ?>
-    <div class="admin-status-grid">
-      <article class="admin-card admin-status-card"><strong>保存済み女優</strong><p><?= e(number_format($storedActressCount)) ?>人</p></article>
-      <article class="admin-card admin-status-card"><strong>公開女優</strong><p><?= e(number_format($publicActressCount)) ?>人</p></article>
-      <article class="admin-card admin-status-card"><strong>公開前・除外</strong><p><?= e(number_format($nonPublicActressCount)) ?>人</p></article>
-    </div>
-    <p class="admin-form-note">「公開女優」は、フロントの女優一覧に表示される人数です。保存済み女優との差には、公開作品に関連付いていない女優などが含まれます。</p>
-  <?php else: ?>
-    <p class="admin-form-note">女優数の内訳を取得できませんでした。</p>
-  <?php endif; ?>
-
   <h2 style="margin-top:24px;">自動更新状態</h2>
   <table class="admin-table">
     <tr><th>ジョブ</th><th>最終実行日時</th><th>成功</th><th>メッセージ</th><th>次回offset</th><th>ロック期限</th></tr>
     <?php foreach ($autoStates as $state): ?>
       <tr>
-        <td><?= e(['items' => '商品', 'actresses' => '女優'][(string)($state['job_key'] ?? '')] ?? (string)($state['job_key'] ?? '')) ?></td>
+        <td><?= e(['items' => '商品'][(string)($state['job_key'] ?? '')] ?? (string)($state['job_key'] ?? '')) ?></td>
         <td><?= e((string)($state['last_run_at'] ?? '')) ?></td>
         <td><?= ((int)($state['last_success'] ?? 0) === 1) ? '成功' : '未成功' ?></td>
         <td><?= e((string)($state['last_message'] ?? '')) ?></td>

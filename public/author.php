@@ -97,4 +97,5 @@ require __DIR__ . '/partials/header.php';
   <?php pcf_render_empty('この作者の関連商品はまだありません。'); ?>
 <?php endif; ?>
 
+<?php pcf_render_sample_movie_modal(); ?>
 <?php require __DIR__ . '/partials/footer.php'; ?>
