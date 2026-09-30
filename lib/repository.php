@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/indexnow.php';
 
 /**
  * ここでSQLに埋め込む文字列は必ず許可リストで制限する。
@@ -1078,6 +1079,7 @@ function upsert_item(array $item): array
             ':id'                   => (int)$existingId,
         ]);
 
+        pcf_indexnow_item_changed((int)$existingId);
         return ['id' => (int)$existingId, 'status' => 'updated'];
     }
 
@@ -1114,7 +1116,9 @@ function upsert_item(array $item): array
         ':updated_at'           => $now,
     ]);
 
-    return ['id' => (int)$pdo->lastInsertId(), 'status' => 'inserted'];
+    $insertedId = (int)$pdo->lastInsertId();
+    pcf_indexnow_item_changed($insertedId);
+    return ['id' => $insertedId, 'status' => 'inserted'];
 }
 
 function upsert_actress(array $actress): string
