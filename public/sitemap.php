@@ -53,7 +53,6 @@ function sitemap_sources(): array
         'genres' => ['relation' => 'item_genres', 'path' => 'genre.php'],
         'series_master' => ['relation' => 'item_series', 'path' => 'series_detail.php'],
         'makers' => ['relation' => 'item_makers', 'path' => 'maker.php'],
-        'authors' => ['relation' => 'item_authors', 'path' => 'author.php'],
     ];
 
     foreach ($masterSources as $table => $config) {
@@ -92,7 +91,6 @@ function sitemap_sources(): array
                 'genres' => 'genre_id',
                 'series_master' => 'series_id',
                 'makers' => 'maker_id',
-                'authors' => 'author_id',
             };
             $where[] = 'EXISTS ('
                 . 'SELECT 1 FROM ' . $relation . ' relation_row '
@@ -172,7 +170,6 @@ $staticUrls = [
     [public_url('makers.php'), 'weekly', '0.8'],
     [public_url('labels.php'), 'weekly', '0.8'],
     [public_url('series_list.php'), 'weekly', '0.8'],
-    [public_url('authors.php'), 'weekly', '0.8'],
 ];
 $sources = sitemap_sources();
 $totalUrls = count($staticUrls);

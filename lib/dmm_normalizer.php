@@ -200,7 +200,6 @@ class DmmNormalizer
                 'genres' => self::normalizeNamedList($info['genre'] ?? []),
                 'makers' => self::normalizeNamedList($info['maker'] ?? []),
                 'series' => self::normalizeNamedList($info['series'] ?? []),
-                'authors' => self::normalizeNamedList($info['author'] ?? []),
                 'directors' => self::normalizeNamedList($info['director'] ?? []),
                 'labels' => self::normalizeNamedList($info['label'] ?? []),
                 'campaigns' => self::normalizeNamedList($row['campaign'] ?? []),

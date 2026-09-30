@@ -37,7 +37,7 @@ require __DIR__ . '/partials/header.php';
   <form class="pcf-search-form" action="<?= e(public_url('search.php')) ?>" method="get" role="search">
     <label for="not-found-search">キーワード検索</label>
     <div style="display:flex;gap:8px;max-width:640px;">
-      <input id="not-found-search" type="search" name="q" value="" placeholder="作品名・作者名・ジャンルなど" style="flex:1;">
+      <input id="not-found-search" type="search" name="q" value="" placeholder="作品名・ジャンル・メーカーなど" style="flex:1;">
       <button class="pcf-button" type="submit">検索</button>
     </div>
   </form>

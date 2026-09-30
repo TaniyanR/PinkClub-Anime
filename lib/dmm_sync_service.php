@@ -64,7 +64,6 @@ class DmmSyncService
             'genre' => $this->client->searchGenres($params),
             'maker' => $this->client->searchMakers($params),
             'series' => $this->client->searchSeries($params),
-            'author' => $this->client->searchAuthors($params),
             default => throw new InvalidArgumentException('Unknown master type.'),
         };
 
@@ -73,7 +72,6 @@ class DmmSyncService
         $table = match ($kind) {
             'genre' => 'genres',
             'maker' => 'makers',
-            'author' => 'authors',
             'actress' => 'actresses',
             'series' => 'series_master',
             default => throw new InvalidArgumentException('Unknown master type.'),
@@ -86,7 +84,6 @@ class DmmSyncService
                     'genre' => 'genre_id',
                     'maker' => 'maker_id',
                     'series' => 'series_id',
-                    'author' => 'author_id',
                     default => 'id',
                 };
                 $id = (string)($r[$idKey] ?? ($r['id'] ?? ''));
@@ -132,11 +129,6 @@ class DmmSyncService
     public function syncSeries(string $floorId, ?string $initial = null, int $hits = 100, int $offset = 1): int
     {
         return $this->syncMaster('series', $floorId, $offset, $hits);
-    }
-
-    public function syncAuthors(string $floorId, ?string $initial = null, int $hits = 100, int $offset = 1): int
-    {
-        return $this->syncMaster('author', $floorId, $offset, $hits);
     }
 
     public function syncItems(string $siteCode, string $serviceCode, string $floorCode, array $params = []): int
@@ -394,7 +386,7 @@ class DmmSyncService
 
     private function rebuildItemRelations(int $itemId, array $item): void
     {
-        $tables = ['item_actresses', 'item_genres', 'item_campaigns', 'item_labels', 'item_directors', 'item_makers', 'item_series', 'item_authors', 'item_actors'];
+        $tables = ['item_actresses', 'item_genres', 'item_campaigns', 'item_labels', 'item_directors', 'item_makers', 'item_series', 'item_actors'];
         foreach ($tables as $table) {
             $this->pdo->prepare("DELETE FROM {$table} WHERE item_id = ?")->execute([$itemId]);
         }
@@ -406,7 +398,6 @@ class DmmSyncService
         $this->insertRelation($itemId, 'item_directors', 'director_name', $item['directors']);
         $this->insertRelation($itemId, 'item_makers', 'maker_name', $item['makers']);
         $this->insertRelation($itemId, 'item_series', 'series_name', $item['series']);
-        $this->insertRelation($itemId, 'item_authors', 'author_name', $item['authors']);
         $this->insertRelation($itemId, 'item_actors', 'actor_name', $item['actors'] ?? []);
     }
 
@@ -417,7 +408,6 @@ class DmmSyncService
             'item_genres' => 'genres',
             'item_makers' => 'makers',
             'item_series' => 'series_master',
-            'item_authors' => 'authors',
         ];
 
         foreach ($rows as $row) {
@@ -455,7 +445,6 @@ class DmmSyncService
     {
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS item_makers (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,item_id INT UNSIGNED NOT NULL,dmm_id VARCHAR(64) NULL,maker_name VARCHAR(255) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uk_item_maker (item_id,dmm_id),CONSTRAINT fk_item_maker_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS item_series (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,item_id INT UNSIGNED NOT NULL,dmm_id VARCHAR(64) NULL,series_name VARCHAR(255) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uk_item_series (item_id,dmm_id),CONSTRAINT fk_item_series_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-        $this->pdo->exec('CREATE TABLE IF NOT EXISTS item_authors (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,item_id INT UNSIGNED NOT NULL,dmm_id VARCHAR(64) NULL,author_name VARCHAR(255) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uk_item_author (item_id,dmm_id),CONSTRAINT fk_item_author_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS item_actors (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,item_id INT UNSIGNED NOT NULL,dmm_id VARCHAR(64) NULL,actor_name VARCHAR(255) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uk_item_actor (item_id,dmm_id),CONSTRAINT fk_item_actor_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS sync_job_state (job_key VARCHAR(64) PRIMARY KEY,next_offset INT NOT NULL DEFAULT 1,next_initial VARCHAR(10) NULL,last_run_at DATETIME NULL,last_success TINYINT(1) NOT NULL DEFAULT 0,last_message TEXT NULL,lock_until DATETIME NULL,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 
