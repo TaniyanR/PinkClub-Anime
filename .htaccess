@@ -1,5 +1,6 @@
 ErrorDocument 404 /404.php
 RewriteEngine On
+RewriteRule ^robots\.txt$ public/robots.php [L]
 RewriteCond %{HTTPS} !=on
 RewriteRule ^(?:index\.(?:php|com))?$ https://%{HTTP_HOST}/ [R=301,L]
 RewriteRule ^index\.(?:php|com)$ / [R=301,L]
