@@ -7,8 +7,8 @@ auth_require_admin();
 $title = 'サイト設定';
 $message = null;
 $error = null;
-$recommendedTagline = 'FANZAの新作・人気AVを、サンプル動画・画像を見ながらジャンルやメーカーから手軽に探せる作品情報サイトです。';
-$recommendedKeywords = 'PinkClub-FL,FANZA,新作AV,人気AV,アダルト動画,AV作品,サンプル動画,サンプル画像,女優,ジャンル,メーカー,シリーズ';
+$recommendedTagline = 'FANZAのアニメ動画を、サンプル動画・画像を見ながらジャンルやメーカー、シリーズから手軽に探せる作品情報サイトです。';
+$recommendedKeywords = 'PinkClub-Anime,FANZA,アニメ動画,アダルトアニメ,新作アニメ,人気アニメ,サンプル動画,サンプル画像,ジャンル,メーカー,シリーズ';
 
 $normalizePinkClubName = static function (string $value): string {
     $value = trim($value);
