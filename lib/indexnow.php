@@ -46,7 +46,7 @@ function pcf_indexnow_valid_url(string $url): bool
         return false;
     }
 
-    // FL has no actress/genre/maker individual pages. Queue canonical routes only.
+    // Queue only canonical public routes that are explicitly supported here.
     $path = (string)($parts['path'] ?? '');
     $basePath = rtrim((string)parse_url(public_url('index.php'), PHP_URL_PATH), '/');
     $prefix = $basePath === '' ? '' : (str_ends_with($basePath, '/index.php') ? substr($basePath, 0, -10) : $basePath);
