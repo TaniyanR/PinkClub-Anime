@@ -417,6 +417,15 @@ function installer_run(): array
         if (is_file($seedPath)) installer_execute_sql_file($seedPath, 'seed_data');
         installer_ensure_admin_user(db(), 'seed_data');
         installer_ensure_settings_row(db(), 'seed_data');
+        require_once __DIR__ . '/fixed_pages.php';
+        fixed_pages_initialize();
+        require_once __DIR__ . '/local_config_writer.php';
+        $local = local_config_load();
+        $salt = trim((string)($local['security']['ip_hash_salt'] ?? ''));
+        if ($salt === '' || $salt === 'pinkclub-default-salt') {
+            $local['security']['ip_hash_salt'] = bin2hex(random_bytes(32));
+            local_config_write($local);
+        }
         $step('seed_data', true);
 
         $currentStep = 'completion_check';

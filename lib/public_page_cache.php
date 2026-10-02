@@ -100,7 +100,7 @@ function pcf_public_page_cache_start(int $ttlSeconds = 120): void
     $cacheAuthority = $cacheHost . ($cachePort !== null ? ':' . $cachePort : '');
 
     $variant = pcf_public_request_is_mobile() ? 'sp' : 'pc';
-    $variant .= '|link-rel-v2|site-media-v1|analytics-v2|age-copyright-v1';
+    $variant .= '|link-rel-v2|site-media-v1|analytics-v3-anime|age-copyright-v1|fl-sync-v2';
     // A tombstone/restore action rotates this generation token so a cached
     // product page cannot remain 200 after its search lifecycle changes.
     $generationFile = dirname(__DIR__) . '/storage/cache/search-generation';
@@ -153,9 +153,9 @@ function pcf_public_page_cache_start(int $ttlSeconds = 120): void
         $content = @file_get_contents($cacheFile);
         if (is_string($content) && $content !== '') {
             header('X-PCF-Page-Cache: HIT');
-            header('Cache-Control: public, max-age=60, stale-while-revalidate=300');
+            header('Cache-Control: private, no-cache');
             if ($method !== 'HEAD') {
-                echo $content;
+                echo pcf_public_page_cache_personalize($content);
             }
             exit;
         }
@@ -168,9 +168,9 @@ function pcf_public_page_cache_start(int $ttlSeconds = 120): void
                 $staleContent = @file_get_contents($cacheFile);
                 if (is_string($staleContent) && $staleContent !== '') {
                     header('X-PCF-Page-Cache: STALE');
-                    header('Cache-Control: public, max-age=30, stale-while-revalidate=300');
+                    header('Cache-Control: private, no-cache');
                     if ($method !== 'HEAD') {
-                        echo $staleContent;
+                        echo pcf_public_page_cache_personalize($staleContent);
                     }
                     fclose($lockHandle);
                     exit;
@@ -186,11 +186,11 @@ function pcf_public_page_cache_start(int $ttlSeconds = 120): void
             $content = @file_get_contents($cacheFile);
             if (is_string($content) && $content !== '') {
                 header('X-PCF-Page-Cache: HIT-AFTER-WAIT');
-                header('Cache-Control: public, max-age=60, stale-while-revalidate=300');
+                header('Cache-Control: private, no-cache');
                 @flock($lockHandle, LOCK_UN);
                 fclose($lockHandle);
                 if ($method !== 'HEAD') {
-                    echo $content;
+                    echo pcf_public_page_cache_personalize($content);
                 }
                 exit;
             }
@@ -198,6 +198,7 @@ function pcf_public_page_cache_start(int $ttlSeconds = 120): void
     }
 
     header('X-PCF-Page-Cache: MISS');
+    $GLOBALS['pcf_public_page_cache_active'] = true;
     ob_start();
 
     register_shutdown_function(static function () use ($cacheFile, $cacheDirectory, $method, $scriptName, $lockHandle): void {
@@ -224,11 +225,6 @@ function pcf_public_page_cache_start(int $ttlSeconds = 120): void
         }
 
         if ($status === 200 && $content !== '') {
-            if ($scriptName === 'item.php' && str_contains($content, '</body>')) {
-                $beaconUrl = function_exists('public_url') ? public_url('page_view_beacon.php') : 'page_view_beacon.php';
-                $beaconScript = '<script>(()=>{try{const p=new URLSearchParams(location.search);const b=new URLSearchParams();for(const k of ["id","content_id","cid"]){const v=p.get(k);if(v)b.set(k,v);}if([...b].length){const u=' . json_encode($beaconUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';if(!(navigator.sendBeacon&&navigator.sendBeacon(u,b))&&window.fetch){fetch(u,{method:"POST",body:b,credentials:"same-origin",keepalive:true}).catch(()=>{});}}}catch(e){}})();</script>';
-                $content = str_replace('</body>', $beaconScript . '</body>', $content);
-            }
             try {
                 $suffix = bin2hex(random_bytes(4));
             } catch (Throwable) {
@@ -243,11 +239,21 @@ function pcf_public_page_cache_start(int $ttlSeconds = 120): void
         }
 
         if ($method !== 'HEAD') {
-            echo $content;
+            echo pcf_public_page_cache_personalize($content);
         }
         if (is_resource($lockHandle)) {
             @flock($lockHandle, LOCK_UN);
             fclose($lockHandle);
         }
     });
+}
+
+/** Keep shared disk HTML reusable while binding the delivered token to this visitor. */
+function pcf_public_page_cache_personalize(string $html): string
+{
+    if (!str_contains($html, '__PCF_ANALYTICS_TOKEN__')) {
+        return $html;
+    }
+    header('Cache-Control: private, no-cache');
+    return str_replace('__PCF_ANALYTICS_TOKEN__', analytics_beacon_token((string)($_SERVER['REQUEST_URI'] ?? '/')), $html);
 }

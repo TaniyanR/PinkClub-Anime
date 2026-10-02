@@ -188,7 +188,12 @@ function ensure_items_item_source_column(): void
 function items_front_release_where(string $alias = ''): string
 {
     $prefix = $alias !== '' ? $alias . '.' : 'items.';
-    return '(' . $prefix . 'release_date IS NULL OR ' . $prefix . 'release_date = "" OR ' . $prefix . 'release_date <= CURDATE())';
+    $where = '(' . $prefix . 'release_date IS NULL OR ' . $prefix . 'release_date = "" OR ' . $prefix . 'release_date <= CURDATE())';
+    if (db_table_exists('item_tombstones')) {
+        $outer = $alias !== '' ? $alias : 'items';
+        $where .= ' AND NOT EXISTS (SELECT 1 FROM item_tombstones gone WHERE gone.item_id = ' . $outer . '.id)';
+    }
+    return $where;
 }
 
 function items_product_source_where(string $alias = ''): string
@@ -386,19 +391,12 @@ function fetch_series_one(int $seriesId): ?array
     }
 }
 
-/**
- * Search Console-confirmed taxonomy duplicates.
- *
- * Keep the source records intact for administration/API sync while routing the
- * public duplicate URL to the already indexed canonical maker page.
- *
+/** Anime retains its own series pages; FL-specific taxonomy redirects do not apply.
  * @return array<int,int> series ID => maker ID
  */
 function series_canonical_maker_redirects(): array
 {
-    return [
-        5214 => 7681,
-    ];
+    return [];
 }
 
 function fetch_genres(int $limit = 50, int $offset = 0, string $order = 'name'): array

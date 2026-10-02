@@ -598,8 +598,28 @@ $pageDescriptionSource = $desc !== '' ? $desc : $title . 'のFANZAアニメ作�
 $pageDescription = mb_strimwidth($pageDescriptionSource, 0, 150, '…', 'UTF-8');
 $canonicalUrl = public_url('item.php') . '?id=' . rawurlencode((string)(int)$item['id']);
 $ogImage = $packageImage;
+// Some API records do not contain a usable package image. Keep social cards
+// visual by falling back to the first API-provided sample image that is also
+// displayed on this page; never advertise a placeholder or a removed local
+// FANZA image.
+if ($ogImage === '') {
+    foreach (array_merge($sampleImages, $sampleImagesSmall) as $socialImageCandidate) {
+        $socialImageCandidate = trim((string)$socialImageCandidate);
+        if ($socialImageCandidate !== '' && !pcf_is_self_hosted_fanza_image_url($socialImageCandidate)) {
+            $ogImage = $socialImageCandidate;
+            break;
+        }
+    }
+}
 if ($ogImage !== '' && str_starts_with($ogImage, '//')) {
     $ogImage = 'https:' . $ogImage;
+}
+$ogImageHost = strtolower((string)(parse_url($ogImage, PHP_URL_HOST) ?: ''));
+if (str_starts_with($ogImage, 'http://')
+    && ($ogImageHost === 'dmm.co.jp' || str_ends_with($ogImageHost, '.dmm.co.jp')
+        || $ogImageHost === 'dmm.com' || str_ends_with($ogImageHost, '.dmm.com'))
+) {
+    $ogImage = 'https://' . substr($ogImage, 7);
 }
 $ogType = 'product';
 $productJsonLd = [
@@ -607,18 +627,10 @@ $productJsonLd = [
     '@type' => 'Product',
     'name' => $title,
     'description' => $pageDescription,
-    'offers' => [
-        '@type' => 'Offer',
-        'url' => $affiliateUrl !== '' ? $affiliateUrl : $canonicalUrl,
-        'priceCurrency' => 'JPY',
-        'availability' => 'https://schema.org/InStock',
-    ],
+    'url' => $canonicalUrl,
 ];
 if ($ogImage !== '') {
     $productJsonLd['image'] = $ogImage;
-}
-if ($actorNames !== []) {
-    $productJsonLd['actor'] = array_map(static fn($name) => ['@type' => 'Person', 'name' => $name], $actorNames);
 }
 $jsonLd = (string)json_encode($productJsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
 
@@ -648,7 +660,7 @@ require __DIR__ . '/partials/header.php';
     <div class="pcf-item-samples" style="display:flex; gap:8px; align-items:flex-start; flex-wrap:nowrap;">
       <?php if ($sampleMovieUrl !== ''): ?>
       <div class="sample-movie-modal__frame-wrap pcf-item-sample-movie" style="width: min(720px, calc(100% - 400px)); max-width: 100%; aspect-ratio: 720 / 480;">
-        <iframe class="sample-movie-modal__frame" src="<?= e($sampleMovieUrl) ?>" allow="autoplay; fullscreen" referrerpolicy="no-referrer" scrolling="no" width="720" height="480"></iframe>
+        <iframe class="sample-movie-modal__frame" title="サンプル動画" src="<?= e($sampleMovieUrl) ?>" allow="autoplay; fullscreen" referrerpolicy="no-referrer" scrolling="no" width="720" height="480"></iframe>
       </div>
       <?php else: ?>
       <div class="sample-movie-modal__frame-wrap pcf-item-sample-movie" style="width: min(720px, calc(100% - 400px)); max-width: 100%; aspect-ratio: 720 / 480; background:#d9d9d9; color:#666; display:flex; align-items:center; justify-content:center; font-weight:700;">no movie</div>
@@ -657,7 +669,7 @@ require __DIR__ . '/partials/header.php';
       <div class="pcf-item-sample-thumbs" style="width:392px; max-width:100%; height:480px; overflow:hidden;"><div style="display:grid; grid-template-rows:repeat(6, 72px); grid-auto-flow:column; grid-auto-columns:92px; gap:8px; align-content:start;">
         <?php foreach ($sampleImagesSmallLargeMap as $i => $imagePair): ?>
           <a href="<?= e((string)$imagePair['large']) ?>" class="pcf-image-viewer-trigger" data-image-index="<?= e((string)$i) ?>" style="display:block;">
-            <img src="<?= e((string)$imagePair['small']) ?>" alt="サンプル画像 <?= e((string)($i + 1)) ?>" loading="lazy" style="display:block; width:100%; height:72px; object-fit:contain;">
+            <img src="<?= e((string)$imagePair['small']) ?>" alt="サンプル画像 <?= e((string)($i + 1)) ?>" width="92" height="72" loading="lazy" decoding="async" style="display:block; width:100%; height:72px; object-fit:contain;">
           </a>
         <?php endforeach; ?>
       </div></div>
@@ -666,14 +678,14 @@ require __DIR__ . '/partials/header.php';
   <?php endif; ?>
 
   <?php if ($affiliateUrl !== ''): ?>
-    <p><a class="pcf-btn" style="display:block; text-align:center; border:2px solid #9aa0ab; font-weight:700; font-size:18px; padding:12px 14px;" href="<?= e($affiliateOutUrl) ?>" target="_blank" rel="noopener noreferrer sponsored nofollow">購入ボタン</a></p>
+    <p><a class="pcf-btn" style="display:block; text-align:center; border:2px solid #9aa0ab; font-weight:700; font-size:18px; padding:12px 14px;" href="<?= e($affiliateOutUrl) ?>" target="_blank" rel="noopener sponsored nofollow">購入ボタン</a></p>
   <?php endif; ?>
 
   <section class="pcf-detail pcf-item-main">
     <div class="pcf-item-main__media" style="width:min(100%, 620px);">
       <?php if ($packageImage !== ''): ?>
       <a href="<?= e($packageImage) ?>" target="_blank" rel="noopener noreferrer">
-        <img class="pcf-detail__package" data-package-image="1" src="<?= e($packageImage) ?>" alt="<?= e((string)($item['title'] ?? '')) ?>" style="display:block; width:100%; height:auto;">
+        <img class="pcf-detail__package" data-package-image="1" src="<?= e($packageImage) ?>" alt="<?= e((string)($item['title'] ?? '')) ?>" width="620" height="877" decoding="async" fetchpriority="high" style="display:block; width:100%; height:auto;">
       </a>
       <?php endif; ?>
       <?php if ($desc !== ''): ?><p><?= nl2br(e($desc)) ?></p><?php endif; ?>
@@ -699,7 +711,7 @@ require __DIR__ . '/partials/header.php';
   </section>
 
   <?php if ($affiliateUrl !== ''): ?>
-    <p><a class="pcf-btn" style="display:block; text-align:center; border:2px solid #9aa0ab; font-weight:700; font-size:18px; padding:12px 14px;" href="<?= e($affiliateOutUrl) ?>" target="_blank" rel="noopener noreferrer sponsored nofollow">購入ボタン</a></p>
+    <p><a class="pcf-btn" style="display:block; text-align:center; border:2px solid #9aa0ab; font-weight:700; font-size:18px; padding:12px 14px;" href="<?= e($affiliateOutUrl) ?>" target="_blank" rel="noopener sponsored nofollow">購入ボタン</a></p>
   <?php endif; ?>
 
   <h2 class="pcf-section-title">関連作品</h2>
@@ -770,19 +782,19 @@ require __DIR__ . '/partials/header.php';
   <button type="button" data-image-close="1" style="position:absolute; top:12px; right:16px; color:#fff; background:transparent; border:0; font-size:40px; line-height:1; cursor:pointer;">×</button>
   <div style="max-width:1200px; margin:26px auto 0; padding:0 18px;">
     <div style="display:flex; align-items:center; justify-content:center; min-height:66vh;">
-      <img id="pcf-image-viewer-main" src="" alt="サンプル画像" style="max-width:100%; max-height:66vh; object-fit:contain;">
+      <img id="pcf-image-viewer-main" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="サンプル画像" style="max-width:100%; max-height:66vh; object-fit:contain;">
     </div>
     <div id="pcf-image-viewer-thumbs" style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px;"></div>
   </div>
 </div>
 
-<div id="sample-movie-modal" class="sample-movie-modal" aria-hidden="true">
+<div id="sample-movie-modal" class="sample-movie-modal" hidden>
   <div class="sample-movie-modal__overlay" data-movie-close="1"></div>
   <div class="sample-movie-modal__dialog" role="dialog" aria-modal="true" aria-label="サンプル動画プレイヤー">
     <button type="button" class="sample-movie-modal__close" data-movie-close="1" aria-label="閉じる">×</button>
     <div id="sample-movie-title" class="sample-movie-modal__title">サンプル動画</div>
     <div class="sample-movie-modal__frame-wrap">
-      <iframe id="sample-movie-frame" class="sample-movie-modal__frame" src="about:blank" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>
+      <iframe id="sample-movie-frame" class="sample-movie-modal__frame" title="サンプル動画" src="about:blank" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>
     </div>
   </div>
 </div>
@@ -796,7 +808,7 @@ require __DIR__ . '/partials/header.php';
     titleNode.textContent = title || 'サンプル動画';
     frame.src = url;
     modal.classList.add('is-open');
-    modal.setAttribute('aria-hidden', 'false');
+    modal.hidden = false;
   };
 
   const imageViewer = document.getElementById('pcf-image-viewer-modal');
@@ -862,7 +874,7 @@ require __DIR__ . '/partials/header.php';
   const closeMovie = () => {
     if (!modal || !frame || !titleNode) return;
     modal.classList.remove('is-open');
-    modal.setAttribute('aria-hidden', 'true');
+    modal.hidden = true;
     frame.src = 'about:blank';
   };
   document.addEventListener('click', (event) => {

@@ -50,14 +50,14 @@ try {
     <summary class="site-mobile-menu__summary">メニュー</summary>
     <div class="site-mobile-menu__body">
         <div class="site-mobile-menu__group">
-            <?php foreach ($mobileMainItems as $item) : ?>
-                <a href="<?= e($item['href']) ?>"><?= e($item['label']) ?></a>
+            <?php foreach ($mobileMainItems as $navItem) : ?>
+                <a href="<?= e($navItem['href']) ?>"><?= e($navItem['label']) ?></a>
             <?php endforeach; ?>
         </div>
         <div class="site-mobile-menu__group">
-            <?php if ($sitePostCount !== null): ?><a style="color:#000;">投稿数：<strong><?= e(number_format($sitePostCount)) ?></strong></a><?php endif; ?>
-            <?php foreach ($mobileInfoItems as $item) : ?>
-                <a href="<?= e($item['href']) ?>"><?= e($item['label']) ?></a>
+            <?php if ($sitePostCount !== null): ?><a style="color:#000;">公開作品数：<strong><?= e(number_format($sitePostCount)) ?></strong></a><?php endif; ?>
+            <?php foreach ($mobileInfoItems as $navItem) : ?>
+                <a href="<?= e($navItem['href']) ?>"><?= e($navItem['label']) ?></a>
             <?php endforeach; ?>
         </div>
         <form class="site-mobile-menu__search" method="get" action="<?= e(public_url('search.php')) ?>">
@@ -67,10 +67,10 @@ try {
     </div>
 </details>
 <nav class="site-nav" aria-label="グローバルナビゲーション">
-    <?php foreach ($navItems as $index => $item) : ?>
-        <?php $isActive = $path === parse_url($item['href'], PHP_URL_PATH); ?>
+    <?php foreach ($navItems as $index => $navItem) : ?>
+        <?php $isActive = $path === parse_url($navItem['href'], PHP_URL_PATH); ?>
         <?php if ($index > 0): ?><span class="site-nav__sep" aria-hidden="true"> | </span><?php endif; ?>
-        <a class="<?= $isActive ? 'is-active' : '' ?>" href="<?= e($item['href']) ?>"><?= e($item['label']) ?></a>
+        <a class="<?= $isActive ? 'is-active' : '' ?>" href="<?= e($navItem['href']) ?>"><?= e($navItem['label']) ?></a>
     <?php endforeach; ?>
     <form class="site-search" method="get" action="<?= e(public_url('search.php')) ?>">
         <input class="site-search__input" type="search" name="q" value="<?= e($searchQuery) ?>" placeholder="商品検索" aria-label="商品検索">

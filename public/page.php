@@ -471,13 +471,13 @@ include __DIR__ . '/partials/header.php';
                         <input type="text" name="website" value="" autocomplete="off" tabindex="-1" style="display:none">
 
                         <label for="contact-name">氏名</label>
-                        <input id="contact-name" name="name" value="<?php echo e($contactForm['name']); ?>" maxlength="100" required>
+                        <input type="text" id="contact-name" name="name" value="<?php echo e($contactForm['name']); ?>" maxlength="100" required>
 
                         <label for="contact-email">メールアドレス</label>
                         <input id="contact-email" name="email" type="email" value="<?php echo e($contactForm['email']); ?>" maxlength="254" required>
 
                         <label for="contact-subject">題名</label>
-                        <input id="contact-subject" name="subject" value="<?php echo e($contactForm['subject']); ?>" maxlength="200" required>
+                        <input type="text" id="contact-subject" name="subject" value="<?php echo e($contactForm['subject']); ?>" maxlength="200" required>
 
                         <label for="contact-message">内容</label>
                         <textarea id="contact-message" name="message" rows="10" maxlength="5000" required><?php echo e($contactForm['message']); ?></textarea>

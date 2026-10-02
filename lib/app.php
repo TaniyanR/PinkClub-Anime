@@ -58,7 +58,7 @@ function settings_get(): array
         'service' => (string)$primaryTarget['service'],
         'floor' => (string)$primaryTarget['floor'],
         'catalog_targets' => $catalogTargets,
-        'master_floor_id' => trim(site_setting_get('master_floor_id', (string)($defaults['master_floor_id'] ?? '43'))),
+        'master_floor_id' => trim(site_setting_get('master_floor_id', (string)($defaults['master_floor_id'] ?? ''))),
         'item_sync_batch' => settings_allowed_item_sync_batch(settings_int('item_sync_batch', 100)),
         'item_sync_enabled' => settings_bool('item_sync_enabled', false),
         'item_sync_interval_minutes' => settings_int('item_sync_interval_minutes', 60),
@@ -76,7 +76,7 @@ function settings_catalog_targets(array $defaults): array
         $configured = [[
             'site' => $defaults['site'] ?? 'FANZA',
             'service' => $defaults['service'] ?? 'digital',
-            'floor' => $defaults['floor'] ?? 'videoa',
+            'floor' => $defaults['floor'] ?? 'anime',
             'label' => '商品',
         ]];
     }
@@ -101,7 +101,7 @@ function settings_catalog_targets(array $defaults): array
     }
 
     if ($targets === []) {
-        $targets['digital:videoa'] = ['site' => 'FANZA', 'service' => 'digital', 'floor' => 'videoa', 'label' => '商品'];
+        $targets['digital:anime'] = ['site' => 'FANZA', 'service' => 'digital', 'floor' => 'anime', 'label' => 'アニメ動画'];
     }
 
     return array_values($targets);
@@ -109,7 +109,7 @@ function settings_catalog_targets(array $defaults): array
 
 function settings_catalog_target_key(array $target): string
 {
-    return strtolower((string)($target['service'] ?? 'digital')) . ':' . strtolower((string)($target['floor'] ?? 'videoa'));
+    return strtolower((string)($target['service'] ?? 'digital')) . ':' . strtolower((string)($target['floor'] ?? 'anime'));
 }
 
 function settings_int(string $key, int $default): int
