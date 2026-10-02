@@ -1,6 +1,6 @@
 # PinkClub-Anime
 
-FANZAのアニメ動画に特化したアフィリエイト商品サイトです。[PinkClub-FANZA](https://github.com/TaniyanR/PinkClub-FANZA) を基盤に、対象商品とAPI取得先を分離しています。
+FANZAのアニメ動画に特化したアフィリエイト商品サイトです。[PinkClub-FL](https://github.com/TaniyanR/PinkClub-FL) を基盤に、対象商品とAPI取得先を分離しています。
 
 ## 対象
 
@@ -31,7 +31,7 @@ FANZAのアニメ動画に特化したアフィリエイト商品サイトです
 
 - PHP 8.1以上
 - MySQL 8.0またはMariaDB 10.5以上
-- PDO MySQL、mbstring、JSON、cURLまたはallow_url_fopen
+- PDO MySQL、mbstring、JSON、cURL、DOM、SimpleXML
 - Apache / nginx
 - cron（自動取得を使う場合）
 
@@ -47,7 +47,11 @@ XAMPPでも動作確認できます。
 6. 管理画面の「商品情報API設定」でAPI IDとアフィリエイトIDを保存します。
 7. 「10件テスト取得」で接続と保存を確認します。
 
-初期管理者は `admin` / `password` です。公開前に必ず変更してください。
+初期管理者名は `admin` です。初回セットアップ完了時に一度だけ表示されるランダムパスワードを保存してください。既存の管理者情報は更新時に上書きしません。
+
+本番では `config.local.php` の `site.base_url` または環境変数 `BASE_URL` に公開URL（例: `https://example.com`）を設定してください。cronでも同じURLを使います。サブディレクトリ配置の場合はそのパスまで指定します。
+
+既存環境の更新は、バックアップを取得した後、管理者としてセットアップ画面からマイグレーションを実行してください。商品・設定・管理者の削除は行いません。
 
 ## 自動取得
 
@@ -61,7 +65,7 @@ php /path/to/PinkClub-Anime/scripts/auto_import.php
 
 ## 主要URL
 
-- 公開トップ: `/public/`
+- 公開トップ: `/`
 - 管理ログイン: `/public/login0718.php`
 - 管理トップ: `/admin/index.php`
 - セットアップ確認: `/public/setup_check.php`
@@ -80,3 +84,7 @@ php /path/to/PinkClub-Anime/scripts/auto_import.php
 <a href="https://affiliate.dmm.com/api/" target="_blank" rel="nofollow"><img src="https://p.dmm.co.jp/p/affiliate/web_service/r18_135_17.gif" alt="WEB SERVICE BY FANZA" width="135" height="17"></a>
 
 商品情報はDMM/FANZA Affiliate APIを利用します。
+
+## 検証と公開準備
+
+[検証記録と公開手順](docs/verification-20261002.md)を参照してください。DB不要の回帰テストは `php tests/regression.php` で実行できます。

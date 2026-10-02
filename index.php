@@ -25,11 +25,8 @@ function redirect_canonical_home_url(): void
 
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
-    if (in_array($requestPath, $homePaths, true) && (!$isHttps || $requestPath !== $homePath)) {
+    if (in_array($requestPath, $homePaths, true) && ((parse_url(BASE_URL, PHP_URL_SCHEME) === 'https' && !$isHttps) || $requestPath !== $homePath)) {
         $canonicalUrl = rtrim(BASE_URL, '/') . '/';
-        if (str_starts_with($canonicalUrl, 'http://')) {
-            $canonicalUrl = 'https://' . substr($canonicalUrl, 7);
-        }
         $queryString = (string)($_SERVER['QUERY_STRING'] ?? '');
         if ($queryString !== '') {
             $canonicalUrl .= '?' . $queryString;
@@ -61,7 +58,6 @@ function pick_random_items(array $rows, int $seed, int $limit = 15): array
     $rows = seeded_shuffle($rows, $seed);
     return array_slice($rows, 0, $limit);
 }
-
 
 function take_unique_items_for_home(array $items, array &$usedKeys, int $limit): array
 {
@@ -123,7 +119,6 @@ function normalize_movie_url(string $url): string
 
     return '';
 }
-
 
 function parse_index_image_urls(?string $value): array
 {
@@ -213,7 +208,6 @@ function query_all_safe(PDO $pdo, string $sql, array $params = []): array
         return [];
     }
 }
-
 
 function home_column_exists(PDO $pdo, string $table, string $column): bool
 {
@@ -311,12 +305,19 @@ function pick_full_package_image(array $item): string
 
 function render_item_card(array $item, int $width = 180, ?array $taxonomy = null, bool $preferFullPackageImage = false, bool $lazyLoad = true): void
 {
-    $itemUrl = app_url('public/item.php?id=' . (int)$item['id']);
+    $itemId = (int)($item['id'] ?? 0);
+    $itemUrl = public_url('item.php?id=' . $itemId);
     $title = (string)($item['title'] ?? '');
+    $raw = decode_item_raw($item);
     $sample = item_sample_state($item);
     $movieClass = $sample['movie_url'] !== '' ? 'sample-button sample-button--enabled' : 'sample-button sample-button--disabled';
     $imageClass = $sample['has_images'] ? 'sample-button sample-button--enabled' : 'sample-button sample-button--disabled';
     $sampleImagesUrl = public_url('sample_images.php?content_id=' . rawurlencode((string)($item['content_id'] ?? '')));
+    $affiliateUrl = trim((string)($item['affiliate_url'] ?? ''));
+    if ($affiliateUrl === '') {
+        $affiliateUrl = trim((string)($raw['affiliateURL'] ?? $raw['affiliate_url'] ?? ''));
+    }
+    $isVrItem = preg_match('/(?:【|\[|［)?\s*VR\s*(?:】|\]|］)?/i', $title) === 1;
     $thumbUrl = trim((string)($item['image_small'] ?? ''));
     if ($preferFullPackageImage) {
         $fullPackageImage = pick_full_package_image($item);
@@ -338,8 +339,12 @@ function render_item_card(array $item, int $width = 180, ?array $taxonomy = null
       <div class="sample-buttons">
         <?php $releaseDateRaw = trim((string)($item['release_date'] ?? '')); ?>
         <span style="display:block;width:100%;padding:12px 10px;text-align:center;color:#000;background:transparent;border:1px solid #000;border-radius:4px;font-size:14px;font-weight:700;box-sizing:border-box;"><?= $releaseDateRaw !== '' ? '発売日：' . e(format_date($releaseDateRaw)) : '発売日' ?></span>
-        <button type="button" class="<?= e($movieClass) ?> sample-movie-trigger" <?= $sample['movie_url'] === '' ? 'disabled' : '' ?> data-movie-url="<?= e((string)$sample['movie_url']) ?>" data-movie-title="<?= e($title) ?>">サンプル動画</button>
-        <button type="button" class="<?= e($imageClass) ?>" <?= !$sample['has_images'] ? 'disabled' : '' ?> onclick="<?= $sample['has_images'] ? "window.open('" . e($sampleImagesUrl) . "','_blank','noopener,noreferrer,width=760,height=540');" : 'return false;' ?>">サンプル画像</button>
+        <?php if ($isVrItem && $itemId > 0 && $affiliateUrl !== ''): ?>
+          <a class="sample-button sample-button--enabled" href="<?= e(public_url('vr_affiliate.php?id=' . $itemId)) ?>" target="_blank" rel="noopener noreferrer sponsored">元サイトで見る</a>
+        <?php else: ?>
+          <button type="button" class="<?= e($movieClass) ?> sample-movie-trigger" <?= $sample['movie_url'] === '' ? 'disabled' : '' ?> data-movie-url="<?= e((string)$sample['movie_url']) ?>" data-movie-title="<?= e($title) ?>">サンプル動画</button>
+        <?php endif; ?>
+        <button type="button" class="<?= e($imageClass) ?> sample-image-trigger" <?= !$sample['has_images'] ? 'disabled' : '' ?> data-sample-images-url="<?= e($sampleImagesUrl) ?>" data-sample-images-title="<?= e($title) ?>">サンプル画像</button>
       </div>
     </article>
     <?php
@@ -420,7 +425,7 @@ require __DIR__ . '/public/partials/header.php';
 <?php elseif ($latestItems === []): ?>
   <div class="card">
     <h2>表示できる商品データがありません</h2>
-    <p>公開できる商品が同期されると、ここに表示されます。</p>
+    <p><a class="button button--primary" href="<?= e(public_url('items.php')) ?>">商品一覧を見る</a></p>
   </div>
 <?php else: ?>
   <section class="rail-section pinkclub-fl-product-section">
@@ -434,14 +439,13 @@ require __DIR__ . '/public/partials/header.php';
   </section>
 <?php endif; ?>
 
-
-<div id="sample-movie-modal" class="sample-movie-modal" aria-hidden="true">
+<div id="sample-movie-modal" class="sample-movie-modal" hidden>
   <div class="sample-movie-modal__overlay" data-movie-close="1"></div>
   <div class="sample-movie-modal__dialog" role="dialog" aria-modal="true" aria-label="サンプル動画プレイヤー">
     <button type="button" class="sample-movie-modal__close" data-movie-close="1" aria-label="閉じる">×</button>
     <div id="sample-movie-title" class="sample-movie-modal__title">サンプル動画</div>
     <div class="sample-movie-modal__frame-wrap">
-      <iframe id="sample-movie-frame" class="sample-movie-modal__frame" src="about:blank" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>
+      <iframe id="sample-movie-frame" class="sample-movie-modal__frame" title="サンプル動画" src="about:blank" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>
     </div>
   </div>
 </div>
@@ -459,12 +463,12 @@ require __DIR__ . '/public/partials/header.php';
     modal.style.setProperty('--movie-modal-width', '900px');
     frame.src = url;
     modal.classList.add('is-open');
-    modal.setAttribute('aria-hidden', 'false');
+    modal.hidden = false;
   };
 
   const closeMovie = () => {
     modal.classList.remove('is-open');
-    modal.setAttribute('aria-hidden', 'true');
+    modal.hidden = true;
     frame.src = 'about:blank';
     modal.style.removeProperty('--movie-modal-width');
     titleNode.textContent = 'サンプル動画';

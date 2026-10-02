@@ -13,3 +13,5 @@ config.local.php
 
 !logs/.gitkeep
 !logs/
+
+/storage/

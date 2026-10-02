@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $client->fetchItems(
                 (string)($settings['site'] ?? 'FANZA'),
                 (string)($settings['service'] ?? 'digital'),
-                (string)($settings['floor'] ?? 'videoa'),
+                (string)($settings['floor'] ?? 'anime'),
                 ['hits' => 1, 'offset' => 1]
             );
             $result = '接続テスト成功（商品情報API疎通OK）';

@@ -138,7 +138,7 @@ function scheduler_run_items_schedule(DmmSyncService $service, array $settings):
         $targets = [[
             'site' => (string)($settings['site'] ?? 'FANZA'),
             'service' => (string)($settings['service'] ?? 'digital'),
-            'floor' => (string)($settings['floor'] ?? 'videoa'),
+            'floor' => (string)($settings['floor'] ?? 'anime'),
             'label' => '商品',
         ]];
     }
@@ -158,7 +158,7 @@ function scheduler_run_items_schedule(DmmSyncService $service, array $settings):
         $result = $service->syncItemsBatch(
             (string)($target['site'] ?? 'FANZA'),
             (string)($target['service'] ?? 'digital'),
-            (string)($target['floor'] ?? 'videoa'),
+            (string)($target['floor'] ?? 'anime'),
             settings_allowed_item_sync_batch((int)($settings['item_sync_batch'] ?? 100)),
             $offset,
             $extraParams,
@@ -211,7 +211,7 @@ function scheduler_run_master_schedule(string $jobKey, DmmSyncService $service, 
     $offset = max(1, (int)$stateStmt->fetchColumn());
 
     try {
-        $floorId = (string)($settings['master_floor_id'] ?? '43');
+        $floorId = (string)($settings['master_floor_id'] ?? '');
         $count = match ($jobKey) {
             'genres' => $service->syncGenres($floorId, null, 100, $offset),
             'actresses' => $service->syncMaster('actress', null, $offset, 100),
@@ -356,10 +356,12 @@ function scheduler_seed_job_state(PDO $pdo): void
     }
 }
 
-function maybe_run_scheduled_jobs(): void
+function maybe_run_scheduled_jobs(): array
 {
     $result = scheduler_tick();
     if (($result['status'] ?? '') === 'error') {
         throw new RuntimeException((string)($result['message'] ?? 'scheduler error'));
     }
+
+    return $result;
 }

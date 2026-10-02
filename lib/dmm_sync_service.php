@@ -49,12 +49,34 @@ class DmmSyncService
         }
     }
 
+    /** Resolve the numeric master floor from codes; never assume another catalog's ID. */
+    public function resolveAnimeFloorId(): string
+    {
+        $response = $this->client->fetchFloorList();
+        foreach (DmmNormalizer::toList($response['result']['site'] ?? []) as $site) {
+            if ((string)($site['code'] ?? $site['site'] ?? '') !== 'FANZA') continue;
+            foreach (DmmNormalizer::toList($site['service'] ?? []) as $service) {
+                if ((string)($service['code'] ?? $service['service'] ?? '') !== 'digital') continue;
+                foreach (DmmNormalizer::toList($service['floor'] ?? []) as $floor) {
+                    if ((string)($floor['code'] ?? $floor['floor'] ?? '') === 'anime'
+                        && ctype_digit((string)($floor['id'] ?? ''))) {
+                        return (string)$floor['id'];
+                    }
+                }
+            }
+        }
+        throw new RuntimeException('FloorListからFANZA/digital/animeのfloor_idを取得できませんでした。');
+    }
+
     public function syncMaster(string $kind, ?string $floorId = null, int $offset = 1, int $hits = 100, array $extraParams = []): int
     {
         $count = 0;
         $params = ['hits' => min(100, max(1, $hits)), 'offset' => max(1, $offset)];
         if ($kind === 'actress') {
             $params = array_merge($params, $extraParams);
+        }
+        if ($kind !== 'actress' && (!$floorId || $floorId === '43')) {
+            $floorId = $this->resolveAnimeFloorId();
         }
         if ($floorId && $kind !== 'actress') {
             $params['floor_id'] = $floorId;

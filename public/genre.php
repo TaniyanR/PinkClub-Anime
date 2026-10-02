@@ -116,7 +116,7 @@ if (!isset($accessRankingTabs[$accessRankingPeriod])) {
 $accessRankingRows = pcf_public_weighted_ranking('genres', $accessRankingPeriod);
 
 $title = $genreName;
-$pageDescription = mb_strimwidth($genreName . 'のAV・成人向け動画作品一覧。FANZAアフィリエイト最新作を紹介。', 0, 150, '…', 'UTF-8');
+$pageDescription = mb_strimwidth($genreName . 'の成人向けアニメ作品一覧。FANZAの最新作・人気作品を紹介。', 0, 150, '…', 'UTF-8');
 $canonicalUrl = public_url('genre.php') . '?' . http_build_query([
     'id' => $id,
     'page' => (int)($pg['page'] ?? 1) > 1 ? (int)$pg['page'] : null,

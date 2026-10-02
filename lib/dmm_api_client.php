@@ -58,42 +58,76 @@ class DmmApiClient
             return $cached;
         }
 
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_FAILONERROR => false,
-            CURLOPT_HTTPHEADER => ['Accept: application/json'],
-        ]);
+        $requestLock = $this->acquireRequestSlot();
+        try {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_FAILONERROR => false,
+                CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            ]);
 
-        $response = curl_exec($ch);
-        if ($response === false) {
-            $error = curl_error($ch);
+            $response = curl_exec($ch);
+            if ($response === false) {
+                $error = $this->redactSensitiveText(curl_error($ch), $query);
+                curl_close($ch);
+                $this->insertApiLog($operation, $safeUrl, $requestHash, 0, json_encode(['error' => $error], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}', false);
+                throw new RuntimeException('cURL error: ' . $error);
+            }
+
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            $this->insertApiLog($operation, $safeUrl, $requestHash, 0, json_encode(['error' => $error], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}', false);
-            throw new RuntimeException('cURL error: ' . $error);
+
+            $this->insertApiLog($operation, $safeUrl, $requestHash, $httpCode, $httpCode >= 400 ? $this->redactSensitiveText($response, $query) : $response, false);
+
+            if ($httpCode >= 400) {
+                throw new RuntimeException($this->buildHttpErrorMessage($httpCode, $operation, $query, $response));
+            }
+
+            $decoded = json_decode($response, true);
+            if (!is_array($decoded)) {
+                throw new RuntimeException('JSON decode failed.');
+            }
+
+            if (isset($decoded['result']['status']) && (int) $decoded['result']['status'] !== 200) {
+                throw new RuntimeException('API error status: ' . $decoded['result']['status']);
+            }
+
+            return $decoded;
+        } finally {
+            flock($requestLock, LOCK_UN);
+            fclose($requestLock);
         }
+    }
 
-        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $this->insertApiLog($operation, $safeUrl, $requestHash, $httpCode, $response, false);
-
-        if ($httpCode >= 400) {
-            throw new RuntimeException($this->buildHttpErrorMessage($httpCode, $operation, $query, $response));
+    /** Serialize uncached API calls across cron and admin requests at one request/second. */
+    private function acquireRequestSlot()
+    {
+        $directory = dirname(__DIR__) . '/storage/cache/api-rate';
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+            throw new RuntimeException('API取得間隔を管理する保存先を作成できません。');
         }
-
-        $decoded = json_decode($response, true);
-        if (!is_array($decoded)) {
-            throw new RuntimeException('JSON decode failed.');
+        $path = $directory . '/' . hash('sha256', $this->apiId) . '.lock';
+        $handle = fopen($path, 'c+');
+        if ($handle === false) {
+            throw new RuntimeException('API取得間隔の管理ファイルを開けません。');
         }
-
-        if (isset($decoded['result']['status']) && (int) $decoded['result']['status'] !== 200) {
-            throw new RuntimeException('API error status: ' . $decoded['result']['status']);
+        if (!flock($handle, LOCK_EX)) {
+            fclose($handle);
+            throw new RuntimeException('API取得処理のロックを取得できません。');
         }
-
-        return $decoded;
+        $lastStarted = (float)stream_get_contents($handle);
+        $wait = 1.0 - (microtime(true) - $lastStarted);
+        if ($wait > 0) {
+            usleep((int)ceil(min(1.0, $wait) * 1000000));
+        }
+        rewind($handle);
+        ftruncate($handle, 0);
+        fwrite($handle, (string)microtime(true));
+        fflush($handle);
+        return $handle;
     }
 
     private function buildHttpErrorMessage(int $httpCode, string $operation, array $query, string $response): string

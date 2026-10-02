@@ -43,7 +43,19 @@ function normalize_configured_base_url(string $value): string
     return $normalized;
 }
 
-$configuredBaseUrl = normalize_configured_base_url((string)getenv('BASE_URL'));
+$localConfigPath = __DIR__ . '/../config.local.php';
+$localConfig = [];
+if (is_file($localConfigPath)) {
+    try {
+        $loadedLocalConfig = require $localConfigPath;
+        if (is_array($loadedLocalConfig)) {
+            $localConfig = $loadedLocalConfig;
+        }
+    } catch (Throwable $e) {
+        $GLOBALS['config_local_error'] = $e->getMessage();
+    }
+}
+$configuredBaseUrl = normalize_configured_base_url((string)(getenv('BASE_URL') ?: ($localConfig['site']['base_url'] ?? '')));
 
 /**
  * Resolve application base path from the current script location.
@@ -178,8 +190,8 @@ function normalize_request_host(string $host): string
 }
 
 $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/'));
-$basePath = detect_base_path($scriptName);
-if ($basePath === '') {
+$basePath = PHP_SAPI === 'cli' ? '' : detect_base_path($scriptName);
+if (PHP_SAPI !== 'cli' && $basePath === '') {
     $basePath = detect_base_path_from_request_uri((string) ($_SERVER['REQUEST_URI'] ?? ''));
 }
 
@@ -221,23 +233,15 @@ $dbConfig = [
     'pass' => '',
     'charset' => 'utf8mb4',
 ];
-$localConfigPath = __DIR__ . '/../config.local.php';
-if (is_file($localConfigPath)) {
-    try {
-        $localConfig = require $localConfigPath;
-        if (is_array($localConfig) && isset($localConfig['db']) && is_array($localConfig['db'])) {
-            $localDbConfig = $localConfig['db'];
-            if (!isset($localDbConfig['dbname']) && isset($localDbConfig['name'])) {
-                $localDbConfig['dbname'] = $localDbConfig['name'];
-            }
-            if (!isset($localDbConfig['pass']) && isset($localDbConfig['password'])) {
-                $localDbConfig['pass'] = $localDbConfig['password'];
-            }
-            $dbConfig = array_replace($dbConfig, array_intersect_key($localDbConfig, $dbConfig));
-        }
-    } catch (Throwable $e) {
-        $GLOBALS['config_local_error'] = $e->getMessage();
+if (isset($localConfig['db']) && is_array($localConfig['db'])) {
+    $localDbConfig = $localConfig['db'];
+    if (!isset($localDbConfig['dbname']) && isset($localDbConfig['name'])) {
+        $localDbConfig['dbname'] = $localDbConfig['name'];
     }
+    if (!isset($localDbConfig['pass']) && isset($localDbConfig['password'])) {
+        $localDbConfig['pass'] = $localDbConfig['password'];
+    }
+    $dbConfig = array_replace($dbConfig, array_intersect_key($localDbConfig, $dbConfig));
 }
 
 return [
@@ -250,7 +254,7 @@ return [
         'site' => 'FANZA',
         'service' => 'digital',
         'floor' => 'anime',
-        'master_floor_id' => '43',
+        'master_floor_id' => '',
         'catalog_targets' => [
             ['site' => 'FANZA', 'service' => 'digital', 'floor' => 'anime', 'label' => 'アニメ動画'],
         ],

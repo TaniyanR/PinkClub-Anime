@@ -127,7 +127,7 @@ try {
     $attachmentName = 'identity-document-' . preg_replace('/[^A-Za-z0-9_-]/', '', $receipt) . '.' . $extensions[$mime];
     $attachmentSize = number_format($size / 1024, 1) . ' KB';
     $mailBody = "受付番号: {$receipt}\n"
-        . "対象サイト: PinkClub-FL\n"
+        . "対象サイト: PinkClub Anime\n"
         . "お名前（本名）: {$name}\n"
         . "メールアドレス: {$email}\n"
         . "電話番号: " . ($phone !== '' ? $phone : '未入力') . "\n\n"

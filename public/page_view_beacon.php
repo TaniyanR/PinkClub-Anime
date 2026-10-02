@@ -10,13 +10,19 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     exit;
 }
 
-if (auth_user()) {
+if (!analytics_request_is_valid_browser_beacon()) {
+    http_response_code(204);
+    exit;
+}
+
+$path = (string)($_POST['path'] ?? '');
+if (!analytics_beacon_token_is_valid((string)($_POST['token'] ?? ''), $path)) {
     http_response_code(204);
     exit;
 }
 
 $userAgent = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
-if (pcf_crawler_guard_is_known_crawler($userAgent)) {
+if (analytics_request_is_automated($userAgent)) {
     http_response_code(204);
     exit;
 }
@@ -45,8 +51,15 @@ try {
         exit;
     }
 
-    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
-    $ipHash = $ip !== '' ? hash('sha256', $ip . date('Y-m-d')) : null;
+    $pathQuery = [];
+    parse_str((string)(parse_url($path, PHP_URL_QUERY) ?? ''), $pathQuery);
+    if (!preg_match('~/(?:public/)?item\.php$~', (string)parse_url($path, PHP_URL_PATH))
+        || (int)($pathQuery['id'] ?? 0) !== (int)$item['id']) {
+        http_response_code(204);
+        exit;
+    }
+
+    $ipHash = analytics_visitor_hash($userAgent);
     $ua = mb_substr($userAgent, 0, 255);
 
     $viewStmt = db()->prepare(

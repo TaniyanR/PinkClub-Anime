@@ -114,7 +114,7 @@ $faviconType = strtolower((string)pathinfo($faviconPath, PATHINFO_EXTENSION)) ==
         <?= csrf_input() ?>
         <label class="login-label">
           ログインID
-          <input class="login-input" name="username" autocomplete="username" required>
+          <input type="text" class="login-input" name="username" autocomplete="username" required>
         </label>
         <label class="login-label">
           パスワード
