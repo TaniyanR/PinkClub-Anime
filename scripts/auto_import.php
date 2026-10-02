@@ -5,6 +5,7 @@ require_once __DIR__ . '/../lib/scheduler.php';
 require_once __DIR__ . '/../lib/app_features.php';
 require_once __DIR__ . '/../lib/home_rotation_cache.php';
 require_once __DIR__ . '/../lib/resource_maintenance.php';
+require_once __DIR__ . '/../lib/indexnow.php';
 
 
 /** @return resource|null */
@@ -38,6 +39,7 @@ function main(): int
         rss_refresh_stale_sources(2, 1800, 2);
         pcf_home_rotation_refresh();
         pcf_resource_cleanup(db(), 500);
+        pcf_indexnow_dispatch();
         echo '[' . date('Y-m-d H:i:s') . "] maybe_run_scheduled_jobs() executed\n";
         return 0;
     } catch (Throwable $e) {

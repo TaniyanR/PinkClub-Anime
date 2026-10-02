@@ -10,6 +10,9 @@ require_once __DIR__ . '/../lib/public_page_cache.php';
 pcf_crawler_guard_check();
 
 $publicScriptName = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+if ($publicScriptName === 'setup_check.php' && function_exists('setup_guard_enforce_for_setup_page')) {
+    setup_guard_enforce_for_setup_page();
+}
 $longCachePublicPages = [
     'index.php',
     'items.php',
@@ -33,6 +36,14 @@ $longCachePublicPages = [
 ];
 $publicPageCacheTtl = in_array($publicScriptName, $longCachePublicPages, true) ? 600 : 120;
 pcf_public_page_cache_start($publicPageCacheTtl);
+
+// Use the configured common OGP image when the page has not supplied a page-specific image.
+if ((!isset($ogImage) || !is_string($ogImage) || trim($ogImage) === '') && function_exists('site_media_public_url')) {
+    $defaultOgpImage = site_media_public_url('ogp');
+    if ($defaultOgpImage !== '') {
+        $ogImage = $defaultOgpImage;
+    }
+}
 
 $readOnlyPublicPages = [
     'index.php',
@@ -59,6 +70,7 @@ $readOnlyPublicPages = [
     'recommendations.php',
     'ranking_refresh.php',
     'analytics.php',
+    'analytics_engagement.php',
     'page_view_beacon.php',
     'out.php',
     'vr_affiliate.php',

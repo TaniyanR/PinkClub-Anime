@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/../lib/repository.php';
 require_once __DIR__ . '/../lib/public_rankings.php';
+require_once __DIR__ . '/../lib/search_lifecycle.php';
 require_once __DIR__ . '/partials/public_ui.php';
 
 function item_normalize_movie_url(string $url): string
@@ -257,6 +258,9 @@ if ($contentId === '' && $cid !== '') {
 
 $item = false;
 try {
+    if (($id > 0 || $contentId !== '') && pcf_item_is_gone($id, $contentId)) {
+        pcf_search_error(410);
+    }
     if ($id > 0) {
         $stmt = db()->prepare('SELECT * FROM items WHERE id = ? AND ' . items_product_source_where());
         $stmt->execute([$id]);
@@ -273,8 +277,9 @@ try {
     } elseif ($contentId !== '') {
         $item = fetch_item_by_content_id($contentId);
     }
-} catch (Throwable) {
-    $item = false;
+} catch (Throwable $e) {
+    error_log('Item lookup failed: ' . $e->getMessage());
+    pcf_search_error(503);
 }
 
 if (!$item) {
